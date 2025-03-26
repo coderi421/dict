@@ -1,0 +1,8 @@
+2025-03-26 12:25:46.608	info	D:/21.nginx/myself/语料库/dict/backend/main.go:30 We are getting the env values
+2025-03-26 12:25:46.609	info	D:/21.nginx/myself/语料库/dict/backend/main.go:80 localhost:8888
+2025-03-26 12:25:52.494	info	D:/21.nginx/myself/语料库/dict/backend/main.go:84 Shutting down server...
+2025-03-26 12:25:52.494	info	D:/21.nginx/myself/语料库/dict/backend/main.go:93 Server exiting
+2025-03-26 12:44:40.448	info	D:/21.nginx/myself/语料库/dict/backend/main.go:29 We are getting the env values
+2025-03-26 12:44:40.450	info	D:/21.nginx/myself/语料库/dict/backend/main.go:79 localhost:8888
+2025-03-26 12:44:49.988	info	D:/21.nginx/myself/语料库/dict/backend/main.go:83 Shutting down server...
+2025-03-26 12:44:49.990	info	D:/21.nginx/myself/语料库/dict/backend/main.go:92 Server exiting

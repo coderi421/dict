@@ -10,7 +10,7 @@ import (
 
 type (
 	AuthService interface {
-		GenerateTokenUser(token string) (string, error)
+		GenerateTokenUser(token uint) (string, error)
 		ValidateToken(encodedToken string) (*jwt.Token, error)
 	}
 
@@ -32,7 +32,7 @@ func NewServiceAuth() *jwtService {
 	return &jwtService{}
 }
 
-func (s *jwtService) GenerateTokenUser(userID string) (string, error) {
+func (s *jwtService) GenerateTokenUser(userID uint) (string, error) {
 	claim := jwt.MapClaims{}
 
 	claim["user_id"] = userID

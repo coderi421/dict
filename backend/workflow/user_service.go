@@ -12,7 +12,7 @@ import (
 type (
 	UserService interface {
 		Login(input entity.LoginEmailInput) (model.User, error)
-		GetUserById(ID string) (model.User, error)
+		GetUserById(ID uint) (model.User, error)
 		UpdateProfile(input entity.DataUserInput) (bool, error)
 	}
 
@@ -25,14 +25,14 @@ func NewUserService(repository repository.UserRepository) *service {
 	return &service{repository}
 }
 
-func (s *service) GetUserById(ID string) (model.User, error) {
+func (s *service) GetUserById(ID uint) (model.User, error) {
 	user, err := s.repository.FindByID(ID)
 
 	if err != nil {
 		return user, err
 	}
 
-	if user.ID != "" {
+	if user.ID != 0 {
 		return user, errors.New("User Tidak Ditemukan")
 	}
 
@@ -48,7 +48,7 @@ func (s *service) Login(input entity.LoginEmailInput) (model.User, error) {
 		return user, err
 	}
 
-	if user.ID == "" {
+	if user.ID == 0 {
 		return user, errors.New("User Not Found")
 	}
 
@@ -72,8 +72,8 @@ func (s *service) UpdateProfile(input entity.DataUserInput) (bool, error) {
 		return false, err
 	}
 
-	user.Name = input.Name
-	user.Email = input.Email
+	user.Username = input.Name
+	//user.Email = input.Email
 	user.Username = input.Username
 
 	_, err = s.repository.UpdateProfile(user)

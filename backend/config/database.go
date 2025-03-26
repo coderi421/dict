@@ -2,7 +2,6 @@ package config
 
 import (
 	"dict/model"
-	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/mysql"
@@ -66,18 +65,18 @@ func Seeds(db *gorm.DB) bool { //https://gorm.io/docs/migration.html
 
 	var users = []model.User{
 		model.User{
-			ID:       uuid.NewString(),
+			ID:       1,
 			Username: "user01",
-			Email:    "user@example.com",
+			//Email:    "user@example.com",
 			Password: string(passwordHash),
-			Phone:    "08123456789",
+			//Phone:    "08123456789",
 		},
 		model.User{
-			ID:       uuid.NewString(),
+			ID:       2,
 			Username: "user02",
-			Email:    "user2@example.com",
+			//Email:    "user2@example.com",
 			Password: string(passwordHash),
-			Phone:    "08123456789",
+			//Phone:    "08123456789",
 		},
 	}
 

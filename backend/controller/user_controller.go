@@ -21,17 +21,15 @@ func NewUserController(userService workflow.UserService, authService config.Auth
 }
 
 type UserFormatter struct {
-	UserID string `json:"id"`
+	UserID uint   `json:"id"`
 	Email  string `json:"email"`
-	Phone  string `json:"phone"`
-	Token  string `json:"token"`
+	//Phone  string `json:"phone"`
+	Token string `json:"token"`
 }
 
 func FormatUser(user model.User, token string) UserFormatter { //Token akan didapatkan dari JWT
 	formater := UserFormatter{
 		UserID: user.ID,
-		Email:  user.Email,
-		Phone:  user.Phone,
 		Token:  token,
 	}
 

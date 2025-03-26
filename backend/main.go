@@ -23,7 +23,6 @@ import (
 func main() {
 	helper.InitLogger()
 	err := godotenv.Load()
-	// fmt.Println("masuk", os.Getenv("DB_USER"))
 	if err != nil {
 		helper.Log.Error(context.Background(), "Error getting env, not comming through %v", err)
 	} else {

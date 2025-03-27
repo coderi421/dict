@@ -80,11 +80,10 @@ const handleSearch = () => {
 const handleSuggestionClick = (suggestion:string) => {
   input.value = suggestion;
 }
-
-onMounted(async () => {
+// 封装获取分类数据的方法
+const fetchCategories = async () => {
   try {
     const response = await getAllCategory();
-    // 明确指定 response.data 的类型为 CategoryItem[]
     const categoryItems: CategoryItem[] = response.data;
     categorys.value = categoryItems.map((item: CategoryItem) => ({
       id: item.id.toString(),
@@ -93,6 +92,10 @@ onMounted(async () => {
   } catch (error) {
     console.error('获取分类数据失败:', error);
   }
+};
+
+onMounted(() => {
+  fetchCategories();
 });
 
 </script>

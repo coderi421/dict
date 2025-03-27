@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted  } from 'vue'
 import { Search } from '@element-plus/icons-vue'
-import { getDictByKeyword } from '@/api/home.js'
+import { getDictByKeyword, getAllCategory } from '@/api/home.js'
 import SearchResult from '@/components/SearchResult.vue';
 
 // 定义单个结果项的类型
-interface ResultItem {
+type ResultItem = {
   id: number
   chinese: string
   chinese_explanation: string
@@ -18,19 +18,20 @@ interface ResultItem {
   category_label?: string // 新增可选属性，用于存储分类标签
 }
 
+// 定义 CategoryItem 类型
+type CategoryItem = {
+  id: number;
+  name: string;
+};
+
 const route = useRoute()
 console.log(route.query)
 
 const input = ref('')
 const select = ref('')
-const categorys = ref([
-  { value: '1', label: 'Restaurant' },
-  { value: '2', label: 'Order No.' },
-  { value: '3', label: 'Tel' }
-])
+const categorys = ref<{ id: string; name: string }[]>([]);
 const searchButtonLoading = ref(false)
 const results = reactive<ResultItem[]>([])
-const loading = ref(false)
 const suggestions = reactive([
   '全面振兴',
   '乡村振兴',
@@ -39,10 +40,12 @@ const suggestions = reactive([
   '高质量发展'
 ])
 
+
+
 // 根据 category_id 获取分类标签
 const getCategoryLabel = (categoryId: number) => {
-  const category = categorys.value.find(item => Number(item.value) === categoryId)
-  return category?.label || '未知分类'
+  const category = categorys.value.find(item => Number(item.id) === categoryId)
+  return category?.name || '未知分类'
 }
 
 // 搜索信息的方法
@@ -77,6 +80,21 @@ const handleSearch = () => {
 const handleSuggestionClick = (suggestion:string) => {
   input.value = suggestion;
 }
+
+onMounted(async () => {
+  try {
+    const response = await getAllCategory();
+    // 明确指定 response.data 的类型为 CategoryItem[]
+    const categoryItems: CategoryItem[] = response.data;
+    categorys.value = categoryItems.map((item: CategoryItem) => ({
+      id: item.id.toString(),
+      name: item.name
+    }));
+  } catch (error) {
+    console.error('获取分类数据失败:', error);
+  }
+});
+
 </script>
 
 <template>
@@ -91,7 +109,7 @@ const handleSuggestionClick = (suggestion:string) => {
       >
         <template #prepend>
           <el-select v-model="select" clearable placeholder="分类" class="search-input" style="width: 140px;">
-            <el-option v-for="item in categorys" :key="item.value" :label="item.label" :value="item.value" />
+            <el-option v-for="item in categorys" :key="item.id" :label="item.name" :value="item.id" />
           </el-select>
         </template>
         <template #append>

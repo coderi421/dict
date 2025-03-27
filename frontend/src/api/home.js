@@ -6,3 +6,9 @@ export function getDictByKeyword (params) {
     params
   })
 }
+
+export function getAllCategory () {
+  return request({
+    url: `/api/v1/category/all`
+  })
+}

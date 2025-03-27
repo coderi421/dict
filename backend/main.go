@@ -44,6 +44,9 @@ func main() {
 	dictRepo := repository.NewDictionaryRepository()
 	dictService := workflow.NewDictionaryService(dictRepo)
 
+	categoryRepo := repository.NewCategoryRepository()
+	categoryService := workflow.NewCategoryService(categoryRepo)
+
 	secureMiddleware := middleware.SecureMiddleware()
 
 	router := gin.Default()
@@ -60,6 +63,7 @@ func main() {
 
 	route.RouteUser(router, userService)
 	route.RouteDictionary(router, userService, dictService)
+	route.RouteCategory(router, userService, categoryService)
 
 	//router.Run(fmt.Sprintf(":%s", os.Getenv("APP_PORT")))
 

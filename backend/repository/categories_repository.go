@@ -6,10 +6,9 @@ import (
 	"gorm.io/gorm"
 )
 
-// CategoryRepository 定义 Category 存储库接口
+// CategoryRepository 定义 Category 存储库的接口
 type CategoryRepository interface {
-	FindCategoryByName(name string) (model.Category, error)
-	// 可以添加更多方法
+	GetAllCategories() ([]model.Category, error)
 }
 
 // categoryRepository 实现 CategoryRepository 接口
@@ -18,16 +17,16 @@ type categoryRepository struct {
 }
 
 // NewCategoryRepository 创建一个新的 Category 存储库实例
-func NewCategoryRepository() *categoryRepository {
-	return &categoryRepository{config.GetDB()}
+func NewCategoryRepository() CategoryRepository {
+	return &categoryRepository{db: config.GetDB()}
 }
 
-// FindCategoryByName 根据名称查找 Category
-func (r *categoryRepository) FindCategoryByName(name string) (model.Category, error) {
-	var category model.Category
-	err := r.db.Where("name = ?", name).First(&category).Error
+// GetAllCategories 获取所有的 category
+func (r *categoryRepository) GetAllCategories() ([]model.Category, error) {
+	var categories []model.Category
+	err := r.db.Find(&categories).Error
 	if err != nil {
-		return category, err
+		return nil, err
 	}
-	return category, nil
+	return categories, nil
 }

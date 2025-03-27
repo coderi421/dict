@@ -66,7 +66,7 @@ func (h *dictionaryController) SearchDictionary(c *gin.Context) {
 		return
 	}
 
-	var formattedResults []DictionaryFormatter
+	var formattedResults = []DictionaryFormatter{}
 	for _, result := range results {
 		formattedResults = append(formattedResults, FormatDictionary(result))
 	}

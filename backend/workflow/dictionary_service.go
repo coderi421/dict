@@ -29,13 +29,15 @@ func NewDictionaryService(repository repository.DictionaryRepository) *dictionar
 
 // SearchDictionary 搜索字典条目
 func (s *dictionaryService) SearchDictionary(keyword string) ([]model.Dictionary, error) {
-	results, err := s.service.SearchDictionary(keyword)
+	var results []model.Dictionary
+	var err error
+	results, err = s.service.SearchDictionary(keyword)
 	if err != nil {
 		return nil, err
 	}
-	if len(results) == 0 {
-		return nil, errors.New("未找到相关字典条目")
-	}
+	//if len(results) == 0 {
+	//	return nil, errors.New("未找到相关字典条目")
+	//}
 	return results, nil
 }
 

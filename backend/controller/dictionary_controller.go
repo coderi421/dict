@@ -5,20 +5,21 @@ import (
 	"dict/helper"
 	"dict/model"
 	"dict/workflow"
-	"net/http"
-
 	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 // dictionaryController 字典控制器结构体
 type dictionaryController struct {
 	dictionaryService workflow.DictionaryService
+	hotKeywordService workflow.SearchHotKeywordService
 }
 
 // NewDictionaryController 创建字典控制器实例
-func NewDictionaryController(dictionaryService workflow.DictionaryService) *dictionaryController {
+func NewDictionaryController(dictionaryService workflow.DictionaryService, hotKeywordController workflow.SearchHotKeywordService) *dictionaryController {
 	return &dictionaryController{
 		dictionaryService: dictionaryService,
+		hotKeywordService: hotKeywordController,
 	}
 }
 
@@ -49,34 +50,49 @@ func FormatDictionary(dictionary model.Dictionary) DictionaryFormatter {
 }
 
 // SearchDictionary 搜索字典条目
-func (h *dictionaryController) SearchDictionary(c *gin.Context) {
+func (d *dictionaryController) SearchDictionary(c *gin.Context) {
 	keyword := c.Query("keyword")
-	if keyword == "" {
-		errorMessage := gin.H{"errors": "搜索关键词不能为空"}
-		responseError := helper.APIResponse("搜索失败 #SRCH001", http.StatusUnprocessableEntity, "fail", errorMessage)
-		c.JSON(http.StatusUnprocessableEntity, responseError)
-		return
-	}
+	categoryId := c.Query("category_id")
 
-	results, err := h.dictionaryService.SearchDictionary(keyword)
+	results, err := d.dictionaryService.SearchDictionary(keyword, categoryId)
 	if err != nil {
 		errorMessage := gin.H{"errors": err.Error()}
-		responseError := helper.APIResponse("搜索失败 #SRCH002", http.StatusUnprocessableEntity, "fail", errorMessage)
+		responseError := helper.APIResponse("服务器暂时不可用", http.StatusUnprocessableEntity, "fail", errorMessage)
 		c.JSON(http.StatusUnprocessableEntity, responseError)
 		return
 	}
 
 	var formattedResults = []DictionaryFormatter{}
+
+	var keywords = []string{}
+
 	for _, result := range results {
 		formattedResults = append(formattedResults, FormatDictionary(result))
+		if keyword != "" {
+			keywordType := helper.AnalyzeInputType(keyword)
+			if keywordType == "pure_english" {
+				keywords = append(keywords, result.Chinese)
+				keywords = append(keywords, result.English)
+			} else {
+				keywords = append(keywords, result.Chinese)
+			}
+		}
 	}
+	go func() {
+		if len(keywords) > 0 {
+			//添加到搜索热词
+			d.hotKeywordService.AddSearchHotKeyword(keywords)
+		}
+	}()
+	////添加到搜索热词
+	//d.hotKeywordService.AddSearchHotKeyword(keywords)
 
-	response := helper.APIResponse("搜索成功", http.StatusOK, "success", formattedResults)
+	response := helper.APIResponse("成功", http.StatusOK, "success", formattedResults)
 	c.JSON(http.StatusOK, response)
 }
 
 // CreateDictionary 创建字典条目
-func (h *dictionaryController) CreateDictionary(c *gin.Context) {
+func (d *dictionaryController) CreateDictionary(c *gin.Context) {
 	var input entity.CreateDictionaryInput
 	err := c.ShouldBindJSON(&input)
 	if err != nil {
@@ -94,7 +110,7 @@ func (h *dictionaryController) CreateDictionary(c *gin.Context) {
 		CategoryID:         input.CategoryID,
 	}
 
-	createdDictionary, err := h.dictionaryService.CreateDictionary(dictionary)
+	createdDictionary, err := d.dictionaryService.CreateDictionary(dictionary)
 	if err != nil {
 		errorMessage := gin.H{"errors": err.Error()}
 		responseError := helper.APIResponse("创建字典条目失败 #CRT002", http.StatusBadRequest, "fail", errorMessage)
@@ -107,7 +123,7 @@ func (h *dictionaryController) CreateDictionary(c *gin.Context) {
 }
 
 // UpdateDictionary 更新字典条目
-func (h *dictionaryController) UpdateDictionary(c *gin.Context) {
+func (d *dictionaryController) UpdateDictionary(c *gin.Context) {
 	var input entity.UpdateDictionaryInput
 	err := c.ShouldBindJSON(&input)
 	if err != nil {
@@ -117,7 +133,7 @@ func (h *dictionaryController) UpdateDictionary(c *gin.Context) {
 		return
 	}
 
-	updatedDictionary, err := h.dictionaryService.UpdateDictionary(model.Dictionary{
+	updatedDictionary, err := d.dictionaryService.UpdateDictionary(model.Dictionary{
 		ID:                 input.ID,
 		Chinese:            input.Chinese,
 		ChineseExplanation: input.ChineseExplanation,
@@ -137,7 +153,7 @@ func (h *dictionaryController) UpdateDictionary(c *gin.Context) {
 }
 
 // DeleteDictionary 删除字典条目
-func (h *dictionaryController) DeleteDictionary(c *gin.Context) {
+func (d *dictionaryController) DeleteDictionary(c *gin.Context) {
 	var input entity.DeleteDictionaryInput
 	err := c.ShouldBindJSON(&input)
 	if err != nil {
@@ -147,7 +163,7 @@ func (h *dictionaryController) DeleteDictionary(c *gin.Context) {
 		return
 	}
 
-	err = h.dictionaryService.DeleteDictionary(input.ID)
+	err = d.dictionaryService.DeleteDictionary(input.ID)
 	if err != nil {
 		errorMessage := gin.H{"errors": err.Error()}
 		responseError := helper.APIResponse("删除字典条目失败 #DEL002", http.StatusBadRequest, "fail", errorMessage)

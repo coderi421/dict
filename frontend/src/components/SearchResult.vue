@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, defineProps } from 'vue'
 import CardDialog from './CardDialog.vue'
-import { ResultItem } from '@/path/to/Home';
+import type { ResultItem } from '@/views/home/types.ts'
 
-const props = defineProps<{
+defineProps<{
   results: ResultItem[];
   loading: boolean;
 }>()

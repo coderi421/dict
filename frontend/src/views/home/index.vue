@@ -1,46 +1,30 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
-import { reactive, ref, onMounted  } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { Search } from '@element-plus/icons-vue'
-import { getDictByKeyword, getAllCategory } from '@/api/home.js'
-import SearchResult from '@/components/SearchResult.vue';
+import { getDictByKeyword, getAllCategory,getHotKeywords } from '@/api/home.js'
+import SearchResult from '@/components/SearchResult.vue'
+import HotSuggestions from '@/components/HotSuggestions.vue';
+import { ElMessage } from 'element-plus'
+import type { CategoryItem, HotKeywordItem } from '@/components/types.ts'
+import type { ResultItem } from '@/views/home/types.ts'
 
-// 定义单个结果项的类型
-type ResultItem = {
-  id: number
-  chinese: string
-  chinese_explanation: string
-  english: string
-  english_explanation: string
-  category_id: number
-  source: string
-  remark: string
-  category_label?: string // 新增可选属性，用于存储分类标签
-}
 
-// 定义 CategoryItem 类型
-type CategoryItem = {
-  id: number;
-  name: string;
-};
+
+
+
+// 定义 HotKeywordItem 类型
+
 
 const route = useRoute()
 console.log(route.query)
 
 const input = ref('')
 const select = ref('')
-const categorys = ref<{ id: string; name: string }[]>([]);
+const categorys = ref<{ id: string; name: string }[]>([])
 const searchButtonLoading = ref(false)
 const results = reactive<ResultItem[]>([])
-const suggestions = reactive([
-  '全面振兴',
-  '乡村振兴',
-  '装备制造',
-  '文化遗产',
-  '高质量发展'
-])
-
-
+const suggestions = reactive<HotKeywordItem[]>([])
 
 // 根据 category_id 获取分类标签
 const getCategoryLabel = (categoryId: number) => {
@@ -52,15 +36,14 @@ const getCategoryLabel = (categoryId: number) => {
 const searchInfoByKeyword = async (keyword: string, categoryId: string) => {
   try {
     searchButtonLoading.value = true
-    const { data } = await getDictByKeyword({ keyword, categoryId })
+    const { data } = await getDictByKeyword({ keyword, category_id: categoryId })
     results.length = 0
     data.forEach((item: ResultItem) => {
       item.category_label = getCategoryLabel(item.category_id)
       results.push(item)
     })
-    console.log('results', results)
   } catch (err: any) {
-    console.error('搜索出错:', err.message)
+    ElMessage.error('Oops, 搜索数据失败, 请稍后再试')
   } finally {
     searchButtonLoading.value = false
   }
@@ -70,33 +53,58 @@ const searchInfoByKeyword = async (keyword: string, categoryId: string) => {
 const handleSearch = () => {
   const keyword = input.value.trim()
   const categoryId = select.value
-  if (!keyword) {
-    console.log('err')
-    return
-  }
+
   searchInfoByKeyword(keyword, categoryId)
 }
 
-const handleSuggestionClick = (suggestion:string) => {
-  input.value = suggestion;
+const handleSuggestionClick = (suggestion: string) => {
+  input.value = suggestion
 }
 // 封装获取分类数据的方法
 const fetchCategories = async () => {
   try {
-    const response = await getAllCategory();
-    const categoryItems: CategoryItem[] = response.data;
+    const response = await getAllCategory()
+    const categoryItems: CategoryItem[] = response.data
     categorys.value = categoryItems.map((item: CategoryItem) => ({
       id: item.id.toString(),
       name: item.name
-    }));
-  } catch (error) {
-    console.error('获取分类数据失败:', error);
+    }))
+  } catch (error: any) {
+    ElMessage.error('Oops, 获取分类数据失败, 请稍后再试')
+  }
+}
+// 定义获取热门关键词的方法
+const fetchHotKeywords = async () => {
+  try {
+    const response = await getHotKeywords();
+    console.log('data', response)
+    if (response?.length === 0) {
+      return;
+    }
+
+    suggestions.length = 0;
+    response.forEach((item: HotKeywordItem) => {
+      suggestions.push(item);
+    });
+    console.log('suggestions', suggestions)
+  } catch (err: any) {
+    ElMessage.error('Oops, 获取热门关键词失败, 请稍后再试');
   }
 };
 
 onMounted(() => {
-  fetchCategories();
-});
+  // 获取热门搜索关键词
+  fetchHotKeywords()
+  // 设置定时器，每5分钟调用一次 fetchHotKeywords 方法
+  setInterval(() => {
+    fetchHotKeywords();
+  }, 5 * 60 * 1000);
+
+  // 获取分类数据
+  fetchCategories()
+  // 初始化，随机获取2条数据
+  searchInfoByKeyword("", select.value)
+})
 
 </script>
 
@@ -125,25 +133,10 @@ onMounted(() => {
           />
         </template>
       </el-input>
-      <!-- Search Section -->
-      <el-row justify="center" class="mb-12">
-        <el-col :span="18">
-          <div style="margin-top: 20px">
-            <span>热门推荐：</span>
-            <el-button
-              type="primary"
-              plain
-              round
-              size="small"
-              v-for="suggestion in suggestions"
-              :key="suggestion"
-              @click="handleSuggestionClick(suggestion)"
-            >
-              {{ suggestion }}
-            </el-button>
-          </div>
-        </el-col>
-      </el-row>
+      <HotSuggestions
+        :suggestions="suggestions"
+        @suggestion-click="handleSuggestionClick"
+      />
       <SearchResult :results="results" :loading="searchButtonLoading" />
     </div>
   </div>
@@ -151,18 +144,21 @@ onMounted(() => {
 
 <style scoped>
 .custom-col {
-  padding: 0 5%!important;
+  padding: 0 5% !important;
 }
+
 .custom-col .custom-card {
   text-align: left;
   margin-top: 1%;
   background-color: #fafafa;
 }
+
 .custom-col .custom-card .card-cell-h2 {
   font-size: 1.25rem;
   font-weight: 600;
   color: #1b3870;
 }
+
 .custom-col .custom-card .escription-text {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -170,18 +166,21 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .search-button {
   width: 60px;
-  color: white!important;
-  background-color: #16458a!important;
-  text-align: center!important;
-  font-size: large!important;
+  color: white !important;
+  background-color: #16458a !important;
+  text-align: center !important;
+  font-size: large !important;
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
 }
+
 .search-input {
-  height: 40px!important;
+  height: 40px !important;
 }
+
 ::v-deep .el-select__wrapper {
   height: 40px;
 }

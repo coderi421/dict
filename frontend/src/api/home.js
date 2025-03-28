@@ -12,3 +12,9 @@ export function getAllCategory () {
     url: `/api/v1/category/all`
   })
 }
+
+export function getHotKeywords () {
+  return request({
+    url: `/api/v1/hotkeys`
+  })
+}

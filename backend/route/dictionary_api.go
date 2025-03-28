@@ -9,9 +9,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RouteDictionary(route *gin.Engine, userService workflow.UserService, dicService workflow.DictionaryService) {
+func RouteDictionary(route *gin.Engine, userService workflow.UserService, dicService workflow.DictionaryService, hotKeywordService workflow.SearchHotKeywordService) {
 	authService := config.NewServiceAuth()
-	dictionaryController := controller.NewDictionaryController(dicService)
+	dictionaryController := controller.NewDictionaryController(dicService, hotKeywordService)
 	dictionaryMiddleware := middleware.AuthMiddlewareUser(authService, userService)
 
 	//root := route.Group("/")

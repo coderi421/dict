@@ -16,3 +16,5 @@
 2025-03-27 17:02:21.746	info	D:/21.nginx/myself/语料库/dict/backend/main.go:92 Server exiting
 2025-03-27 17:02:26.843	info	D:/21.nginx/myself/语料库/dict/backend/main.go:29 We are getting the env values
 2025-03-27 17:02:26.843	info	D:/21.nginx/myself/语料库/dict/backend/main.go:83 localhost:8888
+2025-03-27 17:20:39.248	info	D:/21.nginx/myself/语料库/dict/backend/main.go:87 Shutting down server...
+2025-03-27 17:20:39.248	info	D:/21.nginx/myself/语料库/dict/backend/main.go:96 Server exiting

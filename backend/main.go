@@ -41,6 +41,11 @@ func main() {
 	userRepo := repository.NewUserRepository()
 	userService := workflow.NewUserService(userRepo)
 
+	hotKeyRepo := repository.NewSearchHotKeywordRepository(100)
+	hotKeyRepo.KeywordCache.StartSync(5 * 60 * time.Second)
+	//hotKeyRepo.KeywordCache.StartSync(5 * time.Second)
+	hotKeyService := workflow.NewSearchHotKeywordService(hotKeyRepo)
+
 	dictRepo := repository.NewDictionaryRepository()
 	dictService := workflow.NewDictionaryService(dictRepo)
 
@@ -62,7 +67,8 @@ func main() {
 	router.Use(sentrygin.New(sentrygin.Options{}))
 
 	route.RouteUser(router, userService)
-	route.RouteDictionary(router, userService, dictService)
+	route.RouteSearchHotKey(router, hotKeyService)
+	route.RouteDictionary(router, userService, dictService, hotKeyService)
 	route.RouteCategory(router, userService, categoryService)
 
 	//router.Run(fmt.Sprintf(":%s", os.Getenv("APP_PORT")))

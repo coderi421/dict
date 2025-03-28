@@ -8,7 +8,7 @@ import (
 
 // DictionaryService 定义 Dictionary 服务的接口
 type DictionaryService interface {
-	SearchDictionary(keyword string) ([]model.Dictionary, error)
+	SearchDictionary(keyword string, categoryId string) ([]model.Dictionary, error)
 	FindDictionaryByID(id uint64) (model.Dictionary, error)
 	CreateDictionary(dictionary model.Dictionary) (model.Dictionary, error)
 	UpdateDictionary(dictionary model.Dictionary) (model.Dictionary, error)
@@ -28,10 +28,10 @@ func NewDictionaryService(repository repository.DictionaryRepository) *dictionar
 }
 
 // SearchDictionary 搜索字典条目
-func (s *dictionaryService) SearchDictionary(keyword string) ([]model.Dictionary, error) {
+func (s *dictionaryService) SearchDictionary(keyword string, categoryId string) ([]model.Dictionary, error) {
 	var results []model.Dictionary
 	var err error
-	results, err = s.service.SearchDictionary(keyword)
+	results, err = s.service.SearchDictionary(keyword, categoryId)
 	if err != nil {
 		return nil, err
 	}

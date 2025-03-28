@@ -2,40 +2,40 @@ package repository
 
 import (
 	"container/heap"
+	"context"
 	"dict/config"
+	"dict/helper"
 	"dict/model"
-	"log"
 	"sync"
 	"time"
 
 	"gorm.io/gorm"
 )
 
-// 已有代码...
-
 // SearchHotKeywordRepository 定义 SearchHotKeyword 存储库的接口
 type SearchHotKeywordRepository interface {
-	AddKeyword(keyword string)
-	//FindSearchHotKeywordByID(id uint64) (model.SearchHotKeyword, error)
-	//FindSearchHotKeywordByKeyword(keyword string) (model.SearchHotKeyword, error)
-	//CreateSearchHotKeyword(keyword model.SearchHotKeyword) (model.SearchHotKeyword, error)
-	//UpdateSearchHotKeyword(keyword model.SearchHotKeyword) (model.SearchHotKeyword, error)
-	//DeleteSearchHotKeyword(id uint64) error
+	GetSearchHotKeyword(n int) ([]KeywordEntry, error)
+	AddSearchHotKeyword(keywords []string)
 }
 
 // NewSearchHotKeywordRepository 创建一个新的 SearchHotKeyword 存储库实例
 func NewSearchHotKeywordRepository(size int) *searchHotKeywordRepository {
-	return &searchHotKeywordRepository{config.GetDB(), &HotKeywordCache{
-		entries: make(map[string]*KeywordEntry),
-		heap:    make(KeywordHeap, 0),
-		maxSize: size,
-	}}
+	db := config.GetDB()
+	return &searchHotKeywordRepository{
+		db: db,
+		KeywordCache: &HotKeywordCache{
+			entries: make(map[string]*KeywordEntry),
+			heap:    make(KeywordHeap, 0),
+			maxSize: size,
+			db:      db, // 确保 db 字段被正确赋值
+		},
+	}
 }
 
 // searchHotKeywordRepository 实现 SearchHotKeywordRepository 接口
 type searchHotKeywordRepository struct {
 	db           *gorm.DB
-	keywordCache *HotKeywordCache
+	KeywordCache *HotKeywordCache
 }
 
 // KeywordEntry 和 KeywordHeap 定义保持不变
@@ -51,9 +51,11 @@ type KeywordHeap []*KeywordEntry
 func (h KeywordHeap) Len() int { return len(h) }
 func (h KeywordHeap) Less(i, j int) bool {
 	if h[i].SearchCount == h[j].SearchCount {
-		return h[i].LastSearchedAt.Before(h[j].LastSearchedAt)
+		// 如果 SearchCount 相同，按 LastSearchedAt 降序排列
+		return h[i].LastSearchedAt.After(h[j].LastSearchedAt)
 	}
-	return h[i].SearchCount < h[j].SearchCount
+	// SearchCount 大的排在前面
+	return h[i].SearchCount > h[j].SearchCount
 }
 func (h KeywordHeap) Swap(i, j int) {
 	h[i], h[j] = h[j], h[i]
@@ -84,30 +86,63 @@ type HotKeywordCache struct {
 	db      *gorm.DB
 }
 
-func (c *HotKeywordCache) AddKeyword(keyword string) {
+//	func (c *HotKeywordCache) AddKeyword(keyword string) {
+//		//c.mu.Lock()
+//		//defer c.mu.Unlock()
+//		//
+//		//now := time.Now()
+//		//if entry, exists := c.entries[keyword]; exists {
+//		//	entry.SearchCount++
+//		//	entry.LastSearchedAt = now
+//		//	heap.Fix(&c.heap, entry.Index)
+//		//} else {
+//		//	entry = &KeywordEntry{
+//		//		Keyword:        keyword,
+//		//		SearchCount:    1,
+//		//		LastSearchedAt: now,
+//		//	}
+//		//	c.entries[keyword] = entry
+//		//
+//		//	if len(c.heap) < c.maxSize {
+//		//		heap.Push(&c.heap, entry)
+//		//	} else if c.heap[0].SearchCount < entry.SearchCount ||
+//		//		(c.heap[0].SearchCount == entry.SearchCount && c.heap[0].LastSearchedAt.Before(now)) {
+//		//		old := heap.Pop(&c.heap).(*KeywordEntry)
+//		//		delete(c.entries, old.Keyword)
+//		//		heap.Push(&c.heap, entry)
+//		//	}
+//		//}
+//	}
+func (c *HotKeywordCache) AddKeywords(keywords []string) {
+	if len(keywords) == 0 {
+		return
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	now := time.Now()
-	if entry, exists := c.entries[keyword]; exists {
-		entry.SearchCount++
-		entry.LastSearchedAt = now
-		heap.Fix(&c.heap, entry.Index)
-	} else {
-		entry = &KeywordEntry{
-			Keyword:        keyword,
-			SearchCount:    1,
-			LastSearchedAt: now,
-		}
-		c.entries[keyword] = entry
+	for _, keyword := range keywords {
+		if entry, exists := c.entries[keyword]; exists {
+			entry.SearchCount++
+			entry.LastSearchedAt = now
+			heap.Fix(&c.heap, entry.Index)
+		} else {
+			entry = &KeywordEntry{
+				Keyword:        keyword,
+				SearchCount:    1,
+				LastSearchedAt: now,
+			}
+			c.entries[keyword] = entry
 
-		if len(c.heap) < c.maxSize {
-			heap.Push(&c.heap, entry)
-		} else if c.heap[0].SearchCount < entry.SearchCount ||
-			(c.heap[0].SearchCount == entry.SearchCount && c.heap[0].LastSearchedAt.Before(now)) {
-			old := heap.Pop(&c.heap).(*KeywordEntry)
-			delete(c.entries, old.Keyword)
-			heap.Push(&c.heap, entry)
+			if len(c.heap) < c.maxSize {
+				heap.Push(&c.heap, entry)
+			} else if c.heap[0].SearchCount < entry.SearchCount ||
+				(c.heap[0].SearchCount == entry.SearchCount && c.heap[0].LastSearchedAt.Before(now)) {
+				old := heap.Pop(&c.heap).(*KeywordEntry)
+				delete(c.entries, old.Keyword)
+				heap.Push(&c.heap, entry)
+			}
 		}
 	}
 }
@@ -166,7 +201,9 @@ func (c *HotKeywordCache) SyncToDB() error {
 		entry := heap.Pop(&tempHeap).(*KeywordEntry)
 		top10 = append(top10, entry)
 	}
-
+	if len(top10) == 0 {
+		return nil
+	}
 	tx := c.db.Begin()
 	if tx.Error != nil {
 		return tx.Error
@@ -177,41 +214,44 @@ func (c *HotKeywordCache) SyncToDB() error {
 		return err
 	}
 
+	var models []model.SearchHotKeyword
 	for _, entry := range top10 {
-		if err := tx.Create(&model.SearchHotKeyword{
+		models = append(models, model.SearchHotKeyword{
 			Keyword:        entry.Keyword,
 			SearchCount:    entry.SearchCount,
 			LastSearchedAt: entry.LastSearchedAt,
-		}).Error; err != nil {
-			tx.Rollback()
-			return err
-		}
+		})
+	}
+
+	if err := tx.Create(&models).Error; err != nil {
+		tx.Rollback()
+		return err
 	}
 
 	return tx.Commit().Error
 }
 
-func (c *HotKeywordCache) StartSync() {
-	ticker := time.NewTicker(1 * time.Minute)
+func (c *HotKeywordCache) StartSync(interval time.Duration) {
+	ticker := time.NewTicker(interval)
 	go func() {
 		for range ticker.C {
 			if err := c.SyncToDB(); err != nil {
-				log.Printf("Failed to sync hot keywords to DB: %v", err)
+				helper.Log.Error(context.Background(), "Failed to sync hot keywords to DB: %v", err)
 			} else {
-				log.Println("Hot keywords synced to DB (top 10)")
+				helper.Log.Info(context.Background(), "Hot keywords synced to DB (top 10)")
 			}
 		}
 	}()
 }
 
-// FindSearchHotKeywordByID 根据 ID 查找 SearchHotKeyword
-func (r *searchHotKeywordRepository) FindSearchHotKeywordByID(id uint64) (model.SearchHotKeyword, error) {
-	var keyword model.SearchHotKeyword
-	err := r.db.Where("id = ?", id).First(&keyword).Error
-	if err != nil {
-		return keyword, err
-	}
-	return keyword, nil
+// GetSearchHotKeyword  获取前 n 个热门搜索关键词
+func (r *searchHotKeywordRepository) GetSearchHotKeyword(n int) ([]KeywordEntry, error) {
+	return r.KeywordCache.GetTopKeywords(n)
+}
+
+// AddSearchHotKeyword 添加一个新的 SearchHotKeyword 记录
+func (r *searchHotKeywordRepository) AddSearchHotKeyword(keywords []string) {
+	r.KeywordCache.AddKeywords(keywords)
 }
 
 // FindSearchHotKeywordByKeyword 根据关键词查找 SearchHotKeyword
@@ -222,15 +262,6 @@ func (r *searchHotKeywordRepository) FindSearchHotKeywordByKeyword(keyword strin
 		return hotKeyword, err
 	}
 	return hotKeyword, nil
-}
-
-// CreateSearchHotKeyword 创建一个新的 SearchHotKeyword 记录
-func (r *searchHotKeywordRepository) CreateSearchHotKeyword(keyword model.SearchHotKeyword) (model.SearchHotKeyword, error) {
-	err := r.db.Create(&keyword).Error
-	if err != nil {
-		return keyword, err
-	}
-	return keyword, nil
 }
 
 // UpdateSearchHotKeyword 更新一个已有的 SearchHotKeyword 记录
